@@ -2,19 +2,31 @@ package com.app.appearthquakes;
 
 import static android.content.ContentValues.TAG;
 
+import android.annotation.SuppressLint;
 import android.app.DatePickerDialog;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.DatePicker;
+import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.room.Room;
 
 import com.app.appearthquakes.API.EarthquakeApiClient;
-import com.app.appearthquakes.EarthquakeFeature;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -41,58 +53,53 @@ import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, EarthquakeAdapter.OnItemClickListener {
 
     private GoogleMap mMap;
     private List<EarthquakeFeature> earthquakes;
-    private List<EarthquakeFeature> filteredEarthquakes;
-    private TextView startDateTextView;
-    private TextView endDateTextView;
+    private Button buttonFromDate;
+    private Button buttonToDate;
+    private Button buttonClose;
+    private TextView textViewNotEarthquakes;
+    private RecyclerView recyclerView;
+    private ImageView imageViewProfile;
+    private TextView textViewTitle;
+    private TextView textViewMagnitude;
+    private TextView textViewDepth;
+    private TextView textViewPlace;
+    private User user;
+    private List<User> userList;
+    private ConstraintLayout earthquakeInfoLayout;
 
+    @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getSupportActionBar().hide();
         setContentView(R.layout.activity_main);
 
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
+        AppDatabase appDatabase = Room.databaseBuilder(
+                getApplicationContext(),
+                AppDatabase.class,
+                "dbPruebas"
+        ).allowMainThreadQueries().build();
 
-        startDateTextView = findViewById(R.id.startDateTextView);
-        endDateTextView = findViewById(R.id.endDateTextView);
-
-        Button buttonFromDate = findViewById(R.id.buttonFromDate);
-        Button buttonToDate = findViewById(R.id.buttonToDate);
-        Button buttonFilter = findViewById(R.id.filtrar); // Referencia al botón de filtrar
-
-        buttonFromDate.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showDatePickerDialog(startDateTextView);
+        userList = appDatabase.daoUser().getUsers();
+        SharedPreferences prefs = getSharedPreferences("preferences", Context.MODE_PRIVATE);
+        String emailUser = prefs.getString("userEmail", "");
+        for (User u : userList) {
+            if (u.getEmail().equals(emailUser)) {
+                user = u;
+                break;
             }
-        });
+        }
 
-        buttonToDate.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showDatePickerDialog(endDateTextView);
-            }
-        });
+        loadComponent();
+        getEarthquakesByAPI();
+        Toast.makeText(this, "Actualizando mapa", Toast.LENGTH_LONG).show();
+    }
 
-        buttonFilter.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                filterEarthquakesByDate();
-            }
-        });
-
-        Calendar calendar = Calendar.getInstance();
-        int year = calendar.get(Calendar.YEAR);
-        int month = calendar.get(Calendar.MONTH) + 1;
-        int dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
-
-        String formattedStartDate = String.format("%04d-%02d-%02d", year, month, dayOfMonth);
-
+    private void getEarthquakesByAPI() {
         EarthquakeApiClient client = new EarthquakeApiClient();
         client.fetchEarthquakeData("2020-01-01", "2020-01-02", new Callback() {
             @Override
@@ -102,10 +109,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Gson gson = new Gson();
                         JsonObject jsonObject = JsonParser.parseString(response.body().string()).getAsJsonObject();
                         JsonArray featuresArray = jsonObject.getAsJsonArray("features");
-                        Type listType = new TypeToken<List<EarthquakeFeature>>(){}.getType();
+                        Type listType = new TypeToken<List<EarthquakeFeature>>() {
+                        }.getType();
                         earthquakes = gson.fromJson(featuresArray, listType);
                         if (mMap != null) {
                             addEarthquakeMarkers();
+                            loadEarthquakeRecycler();
+
                         }
                     } catch (JsonSyntaxException | IOException e) {
                         e.printStackTrace();
@@ -122,9 +132,61 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
+    private void loadComponent() {
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+
+        buttonFromDate = findViewById(R.id.buttonFromDate);
+        buttonToDate = findViewById(R.id.buttonToDate);
+        textViewNotEarthquakes = findViewById(R.id.textViewNotEarthquakes);
+        imageViewProfile = findViewById(R.id.ImageViewProfile);
+        recyclerView = findViewById(R.id.recyclerViewEarthquakes);
+        earthquakeInfoLayout = findViewById(R.id.earthquake_info_layout);
+        buttonClose = findViewById(R.id.buttonClose);
+        textViewTitle = findViewById(R.id.titleCL);
+        textViewMagnitude = findViewById(R.id.magnitudeCL);
+        textViewDepth = findViewById(R.id.depthCL);
+        textViewPlace = findViewById(R.id.placeCL);
+        buttonToDate.setEnabled(false);
+
+        buttonFromDate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showDatePickerDialog(buttonFromDate);
+            }
+        });
+
+        buttonToDate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showDatePickerDialog(buttonToDate);
+            }
+        });
+
+
+        imageViewProfile.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showPopupMenu(v);
+            }
+        });
+
+        Button buttonClose = findViewById(R.id.buttonClose);
+        buttonClose.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ConstraintLayout earthquakeInfoLayout = findViewById(R.id.earthquake_info_layout);
+                earthquakeInfoLayout.setVisibility(View.INVISIBLE);
+            }
+        });
+    }
+
     private void filterEarthquakesByDate() {
-        String startDateString = startDateTextView.getText().toString();
-        String endDateString = endDateTextView.getText().toString();
+        buttonToDate.setEnabled(false);
+        earthquakeInfoLayout.setVisibility(View.INVISIBLE);
+        String startDateString = buttonFromDate.getText().toString();
+        String endDateString = buttonToDate.getText().toString();
         mMap.clear();
 
         EarthquakeApiClient client = new EarthquakeApiClient();
@@ -136,10 +198,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Gson gson = new Gson();
                         JsonObject jsonObject = JsonParser.parseString(response.body().string()).getAsJsonObject();
                         JsonArray featuresArray = jsonObject.getAsJsonArray("features");
-                        Type listType = new TypeToken<List<EarthquakeFeature>>() {}.getType();
+                        Type listType = new TypeToken<List<EarthquakeFeature>>() {
+                        }.getType();
                         earthquakes = gson.fromJson(featuresArray, listType);
                         if (mMap != null) {
                             addEarthquakeMarkers();
+                            loadEarthquakeRecycler();
                         }
                     } catch (JsonSyntaxException | IOException e) {
                         e.printStackTrace();
@@ -154,15 +218,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Log.e(TAG, "Error al realizar la solicitud", e);
             }
         });
+        Toast.makeText(this, "Actualizando mapa", Toast.LENGTH_LONG).show();
     }
 
-
+    private void zoomOutMap() {
+        LatLng defaultLocation = new LatLng(0, 0);
+        float defaultZoom = 2;
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLocation, defaultZoom));
+    }
 
     private void addEarthquakeMarkers() {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                for (int i = 0; i < Math.min(20, earthquakes.size()); i++) {
+                int startIndex = Math.max(0, earthquakes.size() - 20);
+                for (int i = startIndex; i < earthquakes.size(); i++) {
                     EarthquakeFeature earthquake = earthquakes.get(i);
                     Double latitude = earthquake.getGeometry().getCoordinates().get(1);
                     Double longitude = earthquake.getGeometry().getCoordinates().get(0);
@@ -174,19 +244,35 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
-    private void updateMapWithFilteredEarthquakes() {
-        mMap.clear();
-        for (int i = 0; i < Math.min(20, earthquakes.size()); i++) {
-            EarthquakeFeature earthquake = earthquakes.get(i);
-            Double latitude = earthquake.getGeometry().getCoordinates().get(1);
-            Double longitude = earthquake.getGeometry().getCoordinates().get(0);
-
-            LatLng location = new LatLng(latitude, longitude);
-            mMap.addMarker(new MarkerOptions().position(location).title("Earthquake " + i));
-        }
+    public void loadEarthquakeRecycler() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (earthquakes != null && !earthquakes.isEmpty()) {
+                    List<EarthquakeFeature> last20Earthquakes;
+                    if (earthquakes.size() <= 20) {
+                        last20Earthquakes = new ArrayList<>(earthquakes);
+                    } else {
+                        last20Earthquakes = earthquakes.subList(earthquakes.size() - 20, earthquakes.size());
+                    }
+                    recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
+                    EarthquakeAdapter adapter = new EarthquakeAdapter(last20Earthquakes, MainActivity.this);
+                    recyclerView.setAdapter(adapter);
+                }else{
+                    recyclerView.setAdapter(null);
+                    earthquakeInfoLayout.setVisibility(View.VISIBLE);
+                    textViewNotEarthquakes.setVisibility(View.VISIBLE);
+                    buttonClose.setVisibility(View.INVISIBLE);
+                    textViewTitle.setVisibility(View.INVISIBLE);
+                    textViewMagnitude.setVisibility(View.INVISIBLE);
+                    textViewDepth.setVisibility(View.INVISIBLE);
+                    textViewPlace.setVisibility(View.INVISIBLE);
+                }
+            }
+        });
     }
 
-    private void showDatePickerDialog(final TextView dateTextView) {
+    private void showDatePickerDialog(final Button dateButton) {
         final Calendar calendar = Calendar.getInstance();
         int year = calendar.get(Calendar.YEAR);
         int month = calendar.get(Calendar.MONTH);
@@ -197,11 +283,61 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     @Override
                     public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
                         String selectedDate = year + "-" + (month + 1) + "-" + dayOfMonth;
-                        dateTextView.setText(selectedDate);
+
+                        if (dateButton.getId() == R.id.buttonFromDate) {
+                            dateButton.setText(selectedDate);
+                            buttonToDate.setEnabled(true);
+                        } else if (dateButton.getId() == R.id.buttonToDate) {
+                            String fromDateText = buttonFromDate.getText().toString();
+                            if (isDateAfter(selectedDate, fromDateText) || selectedDate.equals(fromDateText)) {
+                                dateButton.setText(selectedDate);
+                                filterEarthquakesByDate();
+                                zoomOutMap();
+                            } else {
+                                Toast.makeText(MainActivity.this, "Seleccione una fecha posterior o igual a la de inicio", Toast.LENGTH_SHORT).show();
+                            }
+                        }
                     }
                 }, year, month, dayOfMonth);
 
         datePickerDialog.show();
+    }
+
+    private boolean isDateAfter(String dateToCheck, String dateReference) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        try {
+            Date dateCheck = sdf.parse(dateToCheck);
+            Date dateRef = sdf.parse(dateReference);
+            return dateCheck.after(dateRef);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @SuppressLint("ResourceType")
+    private void showPopupMenu(View view) {
+        PopupMenu popupMenu = new PopupMenu(this, view);
+        popupMenu.getMenuInflater().inflate(R.xml.menu_profile, popupMenu.getMenu());
+
+        MenuItem name = popupMenu.getMenu().findItem(R.id.action_profile_name);
+        MenuItem logOut = popupMenu.getMenu().findItem(R.id.action_logout);
+
+        if (user != null) {
+            name.setTitle(user.getName() + " " + user.getLastName());
+        }
+
+        logOut.setOnMenuItemClickListener(item -> {
+            SharedPreferences prefs = getSharedPreferences("preferences", Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putBoolean("userLogged", false);
+            editor.apply();
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            startActivity(intent);
+            return true;
+        });
+
+        popupMenu.show();
     }
 
     @Override
@@ -238,6 +374,32 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 return true;
             }
         });
+    }
+
+    @Override
+    public void onItemClick(EarthquakeFeature earthquake) {
+        textViewNotEarthquakes.setVisibility(View.INVISIBLE);
+        earthquakeInfoLayout.setVisibility(View.VISIBLE);
+        buttonClose.setVisibility(View.VISIBLE);
+        textViewTitle.setVisibility(View.VISIBLE);
+        textViewMagnitude.setVisibility(View.VISIBLE);
+        textViewDepth.setVisibility(View.VISIBLE);
+        textViewPlace.setVisibility(View.VISIBLE);
+
+        String title = earthquake.getProperties().getTitle();
+        double magnitude = earthquake.getProperties().getMag();
+        double depth = earthquake.getGeometry().getCoordinates().get(2);
+        String place = earthquake.getProperties().getPlace();
+
+        textViewTitle.setText("Título: " + title);
+        textViewMagnitude.setText("Magnitud: " + magnitude);
+        textViewDepth.setText("Profundidad: " + depth);
+        textViewPlace.setText("Lugar: " + place);
+
+        Double latitude = earthquake.getGeometry().getCoordinates().get(1);
+        Double longitude = earthquake.getGeometry().getCoordinates().get(0);
+        LatLng location = new LatLng(latitude, longitude);
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(location, 10));
     }
 
 }

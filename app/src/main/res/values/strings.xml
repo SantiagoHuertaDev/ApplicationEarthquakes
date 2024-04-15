@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">App Earthquakes</string>
+    <string name="earthquakes">Earthquakes</string>
 </resources>

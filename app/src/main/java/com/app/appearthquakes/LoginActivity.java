@@ -1,14 +1,19 @@
 package com.app.appearthquakes;
 
+import static android.app.PendingIntent.getActivity;
+
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.room.Room;
 
@@ -24,11 +29,22 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+        getSupportActionBar().hide();
+        SharedPreferences prefs = getSharedPreferences("preferences", Context.MODE_PRIVATE);
+
         AppDatabase appDatabase = Room.databaseBuilder(
                 getApplicationContext(),
                 AppDatabase.class,
                 "dbPruebas"
         ).allowMainThreadQueries().build();
+
+        boolean userLogged = prefs.getBoolean("userLogged", false);
+        if (userLogged) {
+            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+            startActivity(intent);
+            finish();
+            return;
+        }
 
         editTextEmail = findViewById(R.id.editTextEmail);
         editTextPassword = findViewById(R.id.editTextPassword);
@@ -45,13 +61,17 @@ public class LoginActivity extends AppCompatActivity {
 
                 boolean found = false;
                 for (User user : users) {
-                    if (user.getEmal().equals(email) && user.getPassword().equals(password)) {
+                    if (user.getEmail().equals(email) && user.getPassword().equals(password)) {
                         found = true;
                         break;
                     }
                 }
 
                 if (found) {
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putBoolean("userLogged", true);
+                    editor.putString("userEmail", editTextEmail.getText().toString());
+                    editor.apply();
                     Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     startActivity(intent);
                 } else {
@@ -59,7 +79,6 @@ public class LoginActivity extends AppCompatActivity {
                 }
             }
         });
-
 
         buttonRegistry.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -86,7 +105,7 @@ public class LoginActivity extends AppCompatActivity {
                         String lastName = lastNameEditText.getText().toString();
 
                         if (email.isEmpty() || password.isEmpty() || name.isEmpty() || lastName.isEmpty()) {
-                            showToast("Por favor, completa todos los campos");
+                            showToast("Por favor, completar todos los campos");
                         } else {
                             User user = new User(email, password, name, lastName);
                             appDatabase.daoUser().insertUser(user);
@@ -95,8 +114,7 @@ public class LoginActivity extends AppCompatActivity {
                         }
                     }
                 });
-                cancelButton.setOnClickListener( it -> dialog.dismiss());
-
+                cancelButton.setOnClickListener(it -> dialog.dismiss());
             }
         });
     }

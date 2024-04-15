@@ -4,7 +4,139 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/white_blue"
     tools:context=".MainActivity">
+
+    <ImageView
+        android:id="@+id/ImageViewProfile"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/baseline_account_circle_24"
+        android:clickable="true"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/view"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:background="@color/white"
+        app:layout_constraintBottom_toTopOf="@+id/map"
+        tools:layout_editor_absoluteX="0dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerViewEarthquakes"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_constraintTop_toBottomOf="@id/view"
+            tools:layout_editor_absoluteX="0dp" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/earthquake_info_layout"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:background="@android:color/white"
+            android:orientation="vertical"
+            android:visibility="invisible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/recyclerViewEarthquakes"
+            app:layout_constraintVertical_bias="1.0"
+            tools:ignore="MissingConstraints"
+            tools:layout_editor_absoluteX="55dp">
+
+            <TextView
+                android:id="@+id/view2"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:text="@string/earthquakes"
+                android:textStyle="bold"
+                android:textSize="40sp"
+                android:paddingStart="20dp"
+                android:textColor="@color/blue"
+                android:background="@color/teal_200"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                android:drawableEnd="@drawable/ic_earthquakes"
+                android:paddingEnd="20dp"/>
+
+            <TextView
+                android:id="@+id/textViewNotEarthquakes"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:background="@color/blue"
+                android:paddingTop="8dp"
+                android:text="Sin datos entre esas fechas"
+                android:visibility="invisible"
+                android:textAlignment="center"
+                android:textColor="@color/white"
+                android:textSize="30sp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/view2" />
+
+            <TextView
+                android:id="@+id/titleCL"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="20dp"
+                android:textColor="@color/black"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/view2" />
+
+            <TextView
+                android:id="@+id/magnitudeCL"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:textColor="@color/black"
+                app:layout_constraintStart_toStartOf="@+id/depthCL"
+                app:layout_constraintTop_toBottomOf="@+id/depthCL" />
+
+            <TextView
+                android:id="@+id/depthCL"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:textColor="@color/black"
+                app:layout_constraintStart_toStartOf="@+id/titleCL"
+                app:layout_constraintTop_toBottomOf="@+id/titleCL" />
+
+            <TextView
+                android:id="@+id/placeCL"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:textColor="@color/black"
+                app:layout_constraintStart_toStartOf="@+id/magnitudeCL"
+                app:layout_constraintTop_toBottomOf="@+id/magnitudeCL" />
+
+            <Button
+                android:id="@+id/buttonClose"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="30dp"
+                android:backgroundTint="@color/white_blue"
+                android:text="Cerrar"
+                app:layout_constraintStart_toStartOf="@+id/placeCL"
+                app:layout_constraintTop_toBottomOf="@+id/placeCL" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
 
     <Button
         android:id="@+id/buttonFromDate"
@@ -12,11 +144,14 @@
         android:layout_height="wrap_content"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="188dp"
+        android:layout_marginEnd="4dp"
+        android:backgroundTint="@color/white"
         android:text="Desde"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:textColor="@color/black"
+
+        app:layout_constraintBottom_toBottomOf="@+id/ImageViewProfile"
+        app:layout_constraintEnd_toStartOf="@+id/buttonToDate"
+        app:layout_constraintTop_toTopOf="@+id/ImageViewProfile" />
 
     <Button
         android:id="@+id/buttonToDate"
@@ -24,51 +159,20 @@
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:layout_marginStart="20dp"
-        android:text="Filtrar"
-        app:layout_constraintStart_toEndOf="@+id/startDateTextView"
+        android:layout_marginEnd="10dp"
+        android:backgroundTint="@color/white"
+        android:text="Hasta"
+        android:textColor="@color/black"
+        app:layout_constraintBottom_toBottomOf="@+id/buttonFromDate"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@+id/buttonFromDate" />
 
-    <Button
-        android:id="@+id/filtrar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="4dp"
-        android:text="Filtrar"
-        app:layout_constraintBottom_toTopOf="@+id/map"
-        app:layout_constraintStart_toStartOf="@+id/startDateTextView"
-        app:layout_constraintTop_toBottomOf="@+id/startDateTextView" />
-
-    <TextView
-        android:id="@+id/startDateTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/buttonFromDate"
-        android:layout_marginTop="4dp"
-        android:text="Fecha de inicio"
-        android:textSize="18sp"
-        app:layout_constraintStart_toStartOf="@+id/buttonFromDate"
-        app:layout_constraintTop_toBottomOf="@+id/buttonFromDate" />
-
-    <TextView
-        android:id="@+id/endDateTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/buttonToDate"
-        android:layout_marginTop="4dp"
-        android:text="Fecha de fin"
-        android:textSize="18sp"
-        app:layout_constraintStart_toStartOf="@+id/buttonToDate"
-        app:layout_constraintTop_toBottomOf="@+id/buttonToDate" />
 
     <fragment
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="400dp"
-        android:layout_below="@id/startDateTextView"
+        android:layout_height="380dp"
         app:layout_constraintBottom_toBottomOf="parent"
         tools:context=".MainActivity"
         tools:layout_editor_absoluteX="10dp" />
